@@ -7,11 +7,11 @@ from Crypto.Hash import SHA512
 from databases import Database
 from fastapi import Depends, FastAPI, HTTPException
 
-import models.responses
+import schemas.responses
 from helpers.generate_responses_dict import gen_res_dict
 from helpers.auth_bearer import JWTBearer
 from helpers.auth_handler import decode_token, sign_token
-from models import User, UserId, UserInfo, UserInfoPwd, UserRegis, UserSignin
+from schemas import User, UserId, UserInfo, UserInfoPwd, UserRegis, UserSignin
 
 # 3600 = 1 Hr
 TOKEN_DURATION = 3600*24
@@ -274,5 +274,3 @@ def export_routes(route:str, router:FastAPI, db:Database):
             }
         }
     )
-    async def test():
-        pass

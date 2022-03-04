@@ -2,10 +2,17 @@ from typing import Optional
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from database import db
+from database.database import sess, engine
 
 # Import all routes
-from routes import user
+from routes import role
+
+def get_db():
+    db = sess()
+    try:
+        return db
+    finally:
+        db.close()
 
 tags_metadata = [
     {
@@ -48,11 +55,13 @@ def get_root():
     return {"Hello": "HelloWorld"}
 
 @server.on_event('startup')
-async def startup():
-    await db.connect()
+def startup():
+    from models import role, user
+    try:
+        role.Base.metadata.create_all(bind=engine)
+        user.Base.metadata.create_all(bind=engine)
+    except Exception as e:
+        print(e)
+        exit(0)
 
-@server.on_event('shutdown')
-async def shutdown():
-    await db.disconnect()
-
-user.export_routes('/users', server, db)
+role.export_routes('/roles', server, get_db())
