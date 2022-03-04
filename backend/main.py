@@ -53,7 +53,6 @@ server.mount('/images', StaticFiles(directory='static/images'), name='images')
 
 @server.get('/')
 def get_root(request: Request):
-    print(request.url)
     return RedirectResponse(url=f'{request.url}docs')
 
 @server.on_event('startup')
