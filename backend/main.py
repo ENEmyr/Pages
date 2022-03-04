@@ -1,5 +1,6 @@
 from typing import Optional
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from starlette.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from database.database import sess, engine
@@ -51,8 +52,9 @@ server.add_middleware(
 server.mount('/images', StaticFiles(directory='static/images'), name='images')
 
 @server.get('/')
-def get_root():
-    return {"Hello": "HelloWorld"}
+def get_root(request: Request):
+    print(request.url)
+    return RedirectResponse(url=f'{request.url}docs')
 
 @server.on_event('startup')
 def startup():

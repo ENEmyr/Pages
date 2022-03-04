@@ -19,6 +19,8 @@ class Role(RoleCreate):
         orm_mode = True
         schema_extra = {
             'example': {
-                'id': 1
+                'id': 1,
+                'name': 'User',
+                'permission': '5'
             }
         }

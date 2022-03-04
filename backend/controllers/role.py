@@ -20,30 +20,14 @@ def create_role(db:Session, role:schema.RoleCreate):
     return new_role
 
 def edit_role(db:Session, role:schema.Role, update_info:schema.RoleCreate):
-    # role = db.query(model.Role).filter(model.Role.id == role_id).first()
     role.name = update_info.name
     role.permission = update_info.permission
     db.commit()
     db.refresh(role)
     return role
 
-def edit_name(db:Session, role_id:int, new_name:str):
-    role = db.query(model.Role).filter(model.Role.id == role_id).first()
-    role.name = new_name
-    db.commit()
-    db.refresh(role)
-    return role
-
-def edit_permission(db:Session, role_id:int, new_permission:str):
-    role = db.query(model.Role).filter(model.Role.id == role_id).first()
-    role.permission = new_permission
-    db.commit()
-    db.refresh(role)
-    return role
-
 def delete_role(db:Session, role:schema.Role):
     try:
-        # role = db.query(model.Role).filter(model.Role.id == role_id).first()
         db.delete(role)
     except Exception as e:
         print(e)
