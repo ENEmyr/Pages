@@ -2,10 +2,11 @@ from random import choice, seed
 from string import ascii_letters, digits, punctuation
 from time import time
 from typing import List
+from sys import getsizeof
 
 from Crypto.Hash import SHA512
 from sqlalchemy.orm import Session
-from fastapi import Depends, FastAPI, HTTPException, Response 
+from fastapi import Depends, FastAPI, HTTPException, Response, UploadFile, File
 
 from helpers.generate_responses_dict import gen_res_dict
 from helpers.auth_bearer import JWTBearer
@@ -15,6 +16,7 @@ from controllers import user as controller
 
 # 3600 = 1 Hr
 TOKEN_DURATION = 3600*24
+ACCEPTABLE_MIME_TYPES = ('image/jpeg', 'image/png', 'image/bmp', 'image/gif', 'image/tiff')
 
 def export_routes(route:str, router:FastAPI, db:Session):
     @router.post(
@@ -240,3 +242,44 @@ def export_routes(route:str, router:FastAPI, db:Session):
                 return HTTPException(status_code=404, detail='User not found.')
         except Exception as e:
             return HTTPException(status_code=500, detail=f'Error: {e}')
+
+    @router.post(
+        route+'/images',
+        tags=[route[1:], 'admin_token', 'user_token'],
+        status_code=201,
+        responses={
+            **gen_res_dict(status_codes=[413, 415]),
+            201:{
+                'description': 'profile image created.',
+                'content': {
+                    'application/json': {
+                        'example': { 'img_url': 'images/qeXjK599XJ.jpg' }
+                    }
+                }
+            }
+        }
+    )
+    async def create_profile_images( image: UploadFile = File(...), token: str = Depends(JWTBearer(verify_admin=False))):
+        # Validate input file
+        seed(time())
+        payload = decode_token(token)
+        lookup_user = controller.get_user(db, payload['user_id'])
+        if not lookup_user:
+            raise HTTPException(status_code=400, detail='user not found.')
+
+        file = await image.read()
+        if image.content_type not in ACCEPTABLE_MIME_TYPES:
+            raise HTTPException(status_code=415, detail='Accept only [{}] MIME types.'.format(', '.join(ACCEPTABLE_MIME_TYPES)))
+        elif getsizeof(file) < 50000: # if filesize less than 50KB 
+            raise HTTPException(status_code=413, detail='Image size must greater than 50KB')
+        elif getsizeof(file) >= 52428800: # if filesize greater than 50MB
+            raise HTTPException(status_code=413, detail='Image size must less than 50MB.')
+        else:
+            name = ''.join(choice(ascii_letters+digits) for _ in range(15)) + image.filename[image.filename.rfind('.'):]
+            image_url = f'/images/{name}'
+            update_info = schema.UserPwd(image_url=image_url)
+            if controller.edit_user(db, lookup_user, update_info):
+                # write file into disk
+                with open(f'static/images/{name}', 'wb') as f:
+                    f.write(file)
+                return {'img_url': image_url}

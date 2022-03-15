@@ -12,9 +12,9 @@ class UserData(BaseModel):
     last_name: str = Field(default=None, max_length=300)
     penname: str = Field(default=None, max_length=300)
     image_url: str = Field(default=None, max_length=300)
-    role_id: int = Field(default=6, description='If not defined role will be User(6) by default.')
-    gender: str = Field(default='m', description='If not defined gender will be male(m) by default.')
-    rank: PositiveInt = Field(default=1, description='Rank of user')
+    role_id: int = Field(default=None, description='If not defined role will be User(6) by default.')
+    gender: str = Field(default=None, description='If not defined gender will be male(m) by default.')
+    rank: PositiveInt = Field(default=None, description='Rank of user')
     birthdate: datetime = datetime.fromtimestamp(time())#.isoformat()
     create_dt: Optional[datetime]= datetime.fromtimestamp(time())#.isoformat()
     modified_dt: Optional[datetime]= datetime.fromtimestamp(time())#.isoformat()
@@ -32,7 +32,7 @@ class UserData(BaseModel):
                 'first_name': 'Kevin',
                 'last_name': 'Johnson',
                 'penname': 'Penguin',
-                'image_url': 'https://imgr.url',
+                'image_url': '/images/default.png',
                 'role_id': 1,
                 'gender': 'm',
                 'rank': 30,
@@ -60,7 +60,7 @@ class UserPwd(UserData):
                 'first_name': 'Kevin',
                 'last_name': 'Johnson',
                 'penname': 'Penguin',
-                'image_url': 'https://imgr.url',
+                'image_url': '/images/default.png',
                 'role_id': 1,
                 'gender': 'm',
                 'rank': 30,
@@ -88,7 +88,7 @@ class User(UserPwd):
                 'first_name': 'Kevin',
                 'last_name': 'Johnson',
                 'penname': 'Penguin',
-                'image_url': 'https://imgr.url',
+                'image_url': '/images/default.png',
                 'role_id': 1,
                 'gender': 'm',
                 'rank': 30,
@@ -111,7 +111,7 @@ class UserPrivateData(UserData):
                 'first_name': 'Kevin',
                 'last_name': 'Johnson',
                 'penname': 'Penguin',
-                'image_url': 'https://imgr.url',
+                'image_url': '/images/default.png',
                 'role_id': 1,
                 'gender': 'm',
                 'rank': 30,
@@ -168,7 +168,7 @@ class UserRegis(UserSignin):
                 'gender': 'm',
                 'birthdate': datetime.fromtimestamp(time()),
                 'penname': 'Penguin',
-                'image_url': 'https://imgur.url',
+                'image_url': '/images/default.png',
                 'role_id': 3
             }
         }
@@ -191,6 +191,6 @@ class UserSearch(BaseModel):
                 'penname': 'Penguin',
                 'rank': 30,
                 'gender': 'm',
-                'image_url': 'https://imgur.url'
+                'image_url': '/images/default.png'
             }
         }

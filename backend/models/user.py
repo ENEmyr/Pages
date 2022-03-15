@@ -15,7 +15,7 @@ class User(Base):
     last_name = Column(String(length=300))
     penname = Column(String(length=300), unique=True, index=True)
     gender = Column(String(length=1), default='m')
-    image_url = Column(String(length=300))
+    image_url = Column(String(length=300), default='/images/default.png')
     create_dt = Column(DateTime(), default=datetime.fromtimestamp(time()))
     modified_dt = Column(DateTime(), nullable=True)
     birthdate = Column(DateTime(), nullable=True)
