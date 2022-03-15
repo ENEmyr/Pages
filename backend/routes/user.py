@@ -1,63 +1,44 @@
 from random import choice, seed
 from string import ascii_letters, digits, punctuation
 from time import time
+from datetime import datetime
 from typing import List, Optional
 
 from Crypto.Hash import SHA512
-from databases import Database
-from fastapi import Depends, FastAPI, HTTPException
+# from databases import Database
+from sqlalchemy.orm import Session
+from fastapi import Depends, FastAPI, HTTPException, Response, status
 
-import schemas.responses
+# import schemas.responses
 from helpers.generate_responses_dict import gen_res_dict
 from helpers.auth_bearer import JWTBearer
 from helpers.auth_handler import decode_token, sign_token
-from schemas import User, UserId, UserInfo, UserInfoPwd, UserRegis, UserSignin
+from schemas import user as schema
+from controllers import user as controller
 
 # 3600 = 1 Hr
 TOKEN_DURATION = 3600*24
 
-def export_routes(route:str, router:FastAPI, db:Database):
+def export_routes(route:str, router:FastAPI, db:Session):
     @router.post(
         route+'/register',
         status_code=201,
         tags=[route[1:], 'no_tokens_required'],
-        responses={
-            **gen_res_dict(status_codes=[400]),
-            201: {
-                'description': 'User Created.',
-                'content': {
-                    'application/json': {
-                        'example': {
-                            'UserId': 1
-                        }
-                    }
-                }
-            }
-        }
+        response_model=schema.UserData
     )
-    async def register(user_regis: UserRegis):
+    def register(user_regis: schema.UserRegis):
         seed(int(time())) # gen new random seed from current unix time
+        new_user = schema.UserPwd(**user_regis.dict())
         salt = ''.join(choice(ascii_letters+digits+punctuation) for _ in range(50))
-        hash = SHA512.new((user_regis.password+salt).encode('ascii'))
-        user_regis.password = hash.hexdigest()
-        user = User(
-            **user_regis.dict(),
-            password_salt=salt
-        )
-        user_dict = user.dict()
-        del user_dict['user_id']
-        check_duplicate_query = "SELECT email from `user` WHERE email = :email"
-        dup_res = await db.fetch_one(query=check_duplicate_query, values={'email': user.email})
-        if dup_res is None:
-            regis_query = "INSERT INTO `user`({}) VALUES \
-                ({})".format(
-                    ','.join(user_dict.keys()),
-                    ','.join([':'+x for x in user_dict.keys()])
-                )
-            regis_res = await db.execute(query=regis_query, values=user_dict)
-            return {'UserId': str(regis_res)}
-        else:
-            return HTTPException(status_code=400, detail='Duplicated Email.')
+        hash = SHA512.new((new_user.password+salt).encode('ascii'))
+        new_user.email = new_user.email.lower()
+        new_user.password = hash.hexdigest()
+        new_user.password_salt = salt
+        check_penname = controller.get_user_from_penname(db, new_user.penname)
+        check_email = controller.get_user_from_email(db, new_user.email)
+        if check_email or check_penname:
+            raise HTTPException(status_code=400, detail='penname or email are already taken')
+        return controller.create_user(db, new_user)
 
     @router.post(
         route+'/signin',
@@ -77,16 +58,14 @@ def export_routes(route:str, router:FastAPI, db:Database):
             }
         }
     )
-    async def signin(signin_item:UserSignin):
-        lookup_query = "SELECT user_id, role_id, password, password_salt FROM `user` WHERE email = :email"
-        lookup_res = await db.fetch_one(query=lookup_query, values={'email': signin_item.email})
-        if lookup_res is not None:
-            (user_id, role_id, pwd, pwd_salt) = lookup_res
-            hashed_pwd = SHA512.new((signin_item.password+pwd_salt).encode('ascii')).hexdigest()
-            if hashed_pwd == pwd:
+    def signin(signin_data:schema.UserSignin):
+        lookup_user = controller.get_user_from_email(db, signin_data.email)
+        if lookup_user:
+            hashed_pwd = SHA512.new((signin_data.password+lookup_user.password_salt).encode('ascii')).hexdigest()
+            if hashed_pwd == lookup_user.password:
                 token = sign_token(
-                    user_id=user_id,
-                    role=True if role_id == 1 else False,
+                    user_id=lookup_user.id,
+                    role=lookup_user.role_id,
                     exp=time()+TOKEN_DURATION
                 )
                 # need to collect login log
@@ -97,45 +76,17 @@ def export_routes(route:str, router:FastAPI, db:Database):
             return HTTPException(status_code=401, detail='User not found.')
 
     @router.get(
-        route+'/query',
+        route+'/all',
         tags=[route[1:], 'admin_token'],
-        responses={
-            **gen_res_dict(status_codes=[400, 401, 403]),
-            200:{
-                'description':'Return list of queried users data.',
-                'model': List[UserInfo]
-            }
-        }
+        response_model=List[schema.UserData]
     )
-    async def query_user_data(
+    def list_all_user(
         token: str = Depends(JWTBearer(verify_admin=True)),
-        offset: int = 1,
-        limit: int = 1,
-        id: Optional[UserId] = None):
+        offset: int = 0,
+        limit: int = 100):
         # need to collect query log
-        if id is not None:
-            try:
-                lookup_query = "SELECT {} FROM `user` WHERE user_id = :user_id".format(','.join(UserInfo.__fields__.keys()))
-                lookup_res = await db.fetch_one(query=lookup_query, values={'user_id': id})
-            except:
-                raise HTTPException(status_code=500, detail='Something went wrong when trying to query a request.')
-            else:
-                if lookup_res == None:
-                    return {}
-                res_dict = dict(zip(UserInfo.__fields__.keys(), lookup_res))
-                info = UserInfo(**res_dict)
-                return [info.dict()]
-        else:
-            try:
-                lookup_query = "SELECT {} FROM `user` WHERE user_id >= :offset LIMIT :limit".format(','.join(UserInfo.__fields__.keys()))
-                lookup_res = await db.fetch_all(query=lookup_query, values={'offset': offset, 'limit': limit})
-            except:
-                raise HTTPException(status_code=500, detail='Something went wrong when trying to query a request.')
-            else:
-                if lookup_res == None:
-                    return {}
-                infos = [UserInfo(**dict(zip(UserInfo.__fields__.keys(), x))) for x in lookup_res]
-                return infos
+        users_data = [schema.UserData(**user.dict()) for user in controller.get_users(db, offset, limit)]
+        return users_data
 
     @router.put(
         route,
@@ -154,32 +105,55 @@ def export_routes(route:str, router:FastAPI, db:Database):
             }
         }
     )
-    async def update_info(
-        user_info_pwd: UserInfoPwd,
+    def update_user(
+        confirmed_pwd: str,
+        update_info: schema.UserPwd,
+        response: Response,
         token: str = Depends(JWTBearer())):
-        decoded = decode_token(token)
         # need to collect update log
-        if user_info_pwd.password != None:
-            seed(time())
-            salt_query = "SELECT password_salt FROM `user` WHERE user_id = :user_id"
-            salt_res = await db.fetch_one(salt_query, values={'user_id': decoded['user_id']})
-            hash = SHA512.new((user_info_pwd.password+salt_res[0]).encode('ascii'))
-            user_info_pwd.password = hash.hexdigest()
-        user_dict = {}
-        for key, val in zip(user_info_pwd.dict().keys(), user_info_pwd.dict().values()):
-            if key == 'role':
-                # Ordinary user have no right to update own role
-                continue
-            if val != None and val != '':
-                user_dict[key] = val
-        if len(user_dict) == 0:
-            return {'success': False}
-        user_dict['user_id'] = decoded['user_id']
-        update_query = "UPDATE `user` SET {} WHERE user_id = :user_id".format(
-            ','.join(x+' = :'+x for x in list(user_dict.keys()))
-        )
-        update_res = await db.execute(update_query, values=user_dict)
-        return {'success': True} if update_res == 1 else {'success': False}
+        response_status, detail_msg = 0, ''
+        decoded = decode_token(token)
+        lookup_user = controller.get_user(db, decoded['user_id'])
+        hashed_pwd = SHA512.new((confirmed_pwd+lookup_user.password_salt).encode('ascii')).hexdigest()
+        try:
+            if not lookup_user:
+                response_status, detail_msg = 401, 'User not found.'
+                raise LookupError('Lookup failed')
+            if lookup_user.password != hashed_pwd:
+                response_status, detail_msg = 401, 'Invalid confirm password.'
+                raise LookupError('Lookup failed')
+            else:
+                    update_info.password_salt = None
+                    update_info.create_dt = None
+                    update_info.rank = None
+                    if update_info.email:
+                        if controller.get_user_from_email(db, update_info.email):
+                            response_status, detail_msg = 400, 'Email has already taken.'
+                            raise LookupError(detail_msg)
+                        else:
+                            update_info.email = update_info.email.lower()
+                    if update_info.penname:
+                        if controller.get_user_from_penname(db, update_info.penname):
+                            response_status, detail_msg = 400, 'Penname has already taken.'
+                            raise LookupError(detail_msg)
+                    if update_info.password:
+                       update_info.password = SHA512.new((update_info.password+lookup_user.password_salt).encode('ascii')).hexdigest()
+                    if update_info.role_id:
+                        if int(lookup_user.role.permission) > 0:
+                            update_info.role_id = lookup_user.role_id # Ordinary user has no permission to update his own role
+                    if not controller.edit_user(db, lookup_user, update_info):
+                        response_status, detail_msg = 500, 'Internal server error.'
+                        raise Exception
+        except LookupError as e:
+            response.status_code = response_status
+            return {'success': False, 'detail': detail_msg }
+        except Exception as e:
+            print(e)
+            response.status_code = response_status
+            return {'success': False, 'detail': detail_msg }
+        else:
+            response.status_code = 200
+            return {'success': True, 'detail': ''}
 
     @router.put(
         route+'/alter',
@@ -198,25 +172,25 @@ def export_routes(route:str, router:FastAPI, db:Database):
             }
         }
     )
-    async def alter_user_info(user_info: UserInfo, token: str = Depends(JWTBearer(verify_admin=True))):
+    def alter_user_info(user_id:int, update_info: schema.UserData, token: str = Depends(JWTBearer(verify_admin=True))):
         # need to collect alter log
-        if user_info.user_id == None or user_info.user_id == '':
-            return {'success': False}
-        user_dict = {}
-        for key, val in zip(user_info.dict().keys(), user_info.dict().values()):
-            if val != None and val != '':
-                user_dict[key] = val
-        if len(user_dict) == 0:
-            return {'success': False}
-        update_query = "UPDATE `user` SET {} WHERE user_id = :user_id".format(
-            ','.join(x+' = :'+x for x in list(user_dict.keys()))
-        )
-        update_res = await db.execute(update_query, values=user_dict)
-        return {'success': True} if update_res == 1 else {'success': False}
+        lookup_user = controller.get_user(db, user_id)
+        update_info.password_salt = None
+        update_info.create_dt = None
+        if update_info.email:
+            if not controller.get_user_from_email(db, update_info.email):
+                return {'success': False, 'detail': 'Email has already taken.'}
+            else:
+                update_info.email = update_info.email.lower()
+        if update_info.penname:
+            if not controller.get_user_from_penname(db, update_info.penname):
+                return {'success': False, 'detail': 'Penname has already taken.'}
+        update_res = controller.alter_user(db, lookup_user, update_info)
+        return {'success': True, 'detail': ''} if update_res else {'success': False, 'detail': 'internal server error'}
 
     @router.delete(
-        route+'/{user_id}',
-        tags=[route[1:], 'admin_token'],
+        route,
+        tags=[route[1:], 'admin_token', 'user_token'],
         responses={
             **gen_res_dict(status_codes=[500]),
             200: {
@@ -224,53 +198,48 @@ def export_routes(route:str, router:FastAPI, db:Database):
                 'content': {
                     'application/json': {
                         'example': {
-                            'deleted_user_id': 'user_id not found'
+                            'success': True,
+                            'detail': 'deleted'
                         }
                     }
                 }
             }
         }
     )
-    async def delete_user(user_id: UserId, token: str = Depends(JWTBearer(verify_admin=True))):
+    def delete_user(response:Response, user_id:int = None, token: str = Depends(JWTBearer(verify_admin=False))):
         # need to collect delete log
-        query = "DELETE FROM `user` WHERE user_id = :user_id"
-        res = await db.execute(query=query, values={'user_id': user_id})
-        return {'deleted_user_id': user_id if res == 1 else 'user_id not found.'}
+        decoded = decode_token(token)
+        if decoded['role'] == 1: # request came from administrator token
+            if not user_id:
+                return {'success': False, 'detail': 'user_id is required'}
+            else:
+                user = controller.get_user(db, user_id)
+        else:
+            user = controller.get_user(db, decoded['user_id'])
+        if user:
+            if controller.delete_user(db, user):
+                response.status_code = 200
+                return {'success': True, 'detail': 'deleted'}
+            else:
+                response.status_code = 500
+                return {'success': False, 'detail': 'internal server error'}
+        else:
+            response.status_code = 400
+            return {'success': False, 'detail': 'user not found'}
 
     @router.get(
         route,
         tags=[route[1:], 'user_token'],
-        responses={
-            **gen_res_dict(status_codes=[404, 500]),
-            200: {
-                'description': 'Returned user data.',
-                'model': UserInfo
-            }
-        }
+        response_model=schema.UserPrivateData
     )
-    async def get_user_data(token: str = Depends(JWTBearer())):
+    def get_user_data(token: str = Depends(JWTBearer())):
         decoded = decode_token(token)
         # need to collect get_data log
         try:
-            data_query = 'SELECT {} FROM `user` WHERE user_id = :user_id'.format(','.join(UserInfo.__fields__.keys()))
-            data_res = await db.fetch_one(data_query, values={'user_id': decoded['user_id']})
-            if len(data_res) !=  0:
-                data_dict = dict(zip(UserInfo.__fields__.keys(), data_res))
-                user_info = UserInfo(**data_dict)
-                return user_info
+            user = controller.get_user(db, decoded['user_id'])
+            if user:
+                return schema.UserPrivateData(**user.dict())
             else:
                 return HTTPException(status_code=404, detail='User not found.')
         except Exception as e:
             return HTTPException(status_code=500, detail=f'Error: {e}')
-
-    @router.get(
-        route+'/all',
-        tags=[route[1:], 'no_tokens_required'],
-        responses={
-            **gen_res_dict(status_codes=[404, 500]),
-            200: {
-                'description': 'Returned user data.',
-                'model': UserInfo
-            }
-        }
-    )

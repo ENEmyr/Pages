@@ -19,7 +19,7 @@ class User(Base):
     create_dt = Column(DateTime(), default=datetime.fromtimestamp(time()))
     modified_dt = Column(DateTime(), nullable=True)
     birthdate = Column(DateTime(), nullable=True)
-    rank = Column(Integer, default=0)
+    rank = Column(Integer, default=1)
     role_id = Column(Integer, ForeignKey('role.id'))
 
     # Relation to other models
@@ -42,3 +42,21 @@ class User(Base):
                     self.rank,
                     self.role_id,
                     self.role)))
+
+    def dict(self) -> dict:
+        return {
+            'id': self.id,
+            'email': self.email,
+            'password': self.password,
+            'password_salt': self.password_salt,
+            'first_name': self.first_name,
+            'last_name': self.last_name,
+            'penname': self.penname,
+            'gender': self.gender,
+            'image_url': self.image_url,
+            'create_dt': self.create_dt,
+            'modified_dt': self.modified_dt,
+            'birthdate': self.birthdate,
+            'rank': self.rank,
+            'role_id': self.role_id
+        }

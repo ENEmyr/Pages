@@ -14,7 +14,7 @@ def token_response(token: str) -> dict:
 
 def sign_token(
     user_id: int,
-    role: bool,
+    role: int,
     exp:float = time.time()+3600) -> Dict[str, str]:
     # 3600 = 1 hr
     payload = {

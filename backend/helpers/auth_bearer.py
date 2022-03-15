@@ -3,6 +3,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from helpers.auth_handler import decode_token
 
+ADMINISTRATOR_ID = 1
 
 class JWTBearer(HTTPBearer):
     def __init__(
@@ -16,7 +17,7 @@ class JWTBearer(HTTPBearer):
         if credentials:
             if not credentials.scheme == 'Bearer':
                 raise HTTPException(status_code=401, detail='Invalid authentication scheme.')
-            is_admin = self.verify_jwt(credentials.credentials)
+            is_admin = True if self.verify_jwt(credentials.credentials) == ADMINISTRATOR_ID else False
             if self.verify_admin:
                 if not is_admin:
                     raise HTTPException(status_code=403, detail='Not enough privileges.')

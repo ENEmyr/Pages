@@ -5,8 +5,13 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from database.database import sess, engine
 
+from rich import pretty
+from rich.traceback import install 
+pretty.install()
+install()
+
 # Import all routes
-from routes import role
+from routes import role, user
 
 def get_db():
     db = sess()
@@ -66,3 +71,4 @@ def startup():
         exit(0)
 
 role.export_routes('/roles', server, get_db())
+user.export_routes('/users', server, get_db())
