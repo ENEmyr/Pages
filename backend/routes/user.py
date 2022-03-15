@@ -1,15 +1,12 @@
 from random import choice, seed
 from string import ascii_letters, digits, punctuation
 from time import time
-from datetime import datetime
-from typing import List, Optional
+from typing import List
 
 from Crypto.Hash import SHA512
-# from databases import Database
 from sqlalchemy.orm import Session
-from fastapi import Depends, FastAPI, HTTPException, Response, status
+from fastapi import Depends, FastAPI, HTTPException, Response 
 
-# import schemas.responses
 from helpers.generate_responses_dict import gen_res_dict
 from helpers.auth_bearer import JWTBearer
 from helpers.auth_handler import decode_token, sign_token

@@ -1,3 +1,4 @@
+from typing import Literal
 from pydantic import BaseModel, Field
 
 class RoleCreate(BaseModel):
@@ -20,6 +21,18 @@ class Role(RoleCreate):
         schema_extra = {
             'example': {
                 'id': 1,
+                'name': 'User',
+                'permission': '5'
+            }
+        }
+
+class RoleSearch(RoleCreate):
+    type: Literal['role'] = Field(default='role')
+
+    class Config:
+        schema_extra = {
+            'example': {
+                'type': 'role',
                 'name': 'User',
                 'permission': '5'
             }

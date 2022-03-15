@@ -26,3 +26,10 @@ class Role(Base):
                     self.name,
                     self.permission.
                     self.user)))
+
+    def dict(self) -> dict:
+        return {
+            'id': self.id,
+            'name': self.name,
+            'permission': self.permission
+        }

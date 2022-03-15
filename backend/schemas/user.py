@@ -1,6 +1,6 @@
 from datetime import datetime
 from time import time
-from typing import Optional
+from typing import Optional, Literal
 
 from pydantic import BaseModel, Field, PositiveInt, root_validator, validator
 from validators import email as validate_email
@@ -174,6 +174,7 @@ class UserRegis(UserSignin):
         }
 
 class UserSearch(BaseModel):
+    type: Literal['user'] = Field(default='user')
     id: int = Field(...)
     role_id: int = Field(..., description='If not defined role will be User(5) by default.')
     penname: str = Field(..., max_length=300)
@@ -184,6 +185,7 @@ class UserSearch(BaseModel):
     class Config:
         schema_extra = {
             'example': {
+                'type': 'user',
                 'id': 1,
                 'role_id': 5,
                 'penname': 'Penguin',

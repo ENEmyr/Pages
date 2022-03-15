@@ -11,7 +11,7 @@ pretty.install()
 install()
 
 # Import all routes
-from routes import role, user
+from routes import role, user, search
 
 def get_db():
     db = sess()
@@ -72,3 +72,4 @@ def startup():
 
 role.export_routes('/roles', server, get_db())
 user.export_routes('/users', server, get_db())
+search.export_routes('/search', server, get_db())
