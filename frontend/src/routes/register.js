@@ -84,9 +84,11 @@ class Register extends Component {
             penname: penName.current.value,
             image_url: "/images/default.png",
         }).then((response) => {
-            alert('register success')
+            alert('register success');
         }).catch((error) => {
-            alert('error ' + error)
+            console.log(error.response);
+            if (error.response.data.detail[0].msg) alert('error ' + error.response.data.detail[0].msg);
+            else alert('error ' + error);
         });
     }
 }
