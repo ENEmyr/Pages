@@ -8,6 +8,7 @@ import { BrowserRouter, Route, Routes, Link } from "react-router-dom";
 import Search from "./routes/search";
 import Setting from "./routes/setting";
 import Register from "./routes/register";
+import Login from "./routes/login";
 
 ReactDOM.render(
     <div>
@@ -17,6 +18,7 @@ ReactDOM.render(
                 <Route path="search" element={<Search />} />
                 <Route path="setting" element={<Setting />} />
                 <Route path="register" element={<Register />} />
+                <Route path="login" element={<Login />} />
             </Routes>
         </BrowserRouter>
     </div>, document.getElementById('root'));
