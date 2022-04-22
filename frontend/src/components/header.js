@@ -15,7 +15,8 @@ class Header extends Component {
           </a>
           <form class="form-inline">
             <button class="btn btn-outline-success my-2 my-sm-0" type="submit" onClick={this.onLoginClick}>Login</button> &nbsp;
-            <button class="btn btn-outline-secondary my-2 my-sm-0" type="submit" onClick={this.onRegisterClick}>Register</button>
+            <button class="btn btn-outline-secondary my-2 my-sm-0" type="submit" onClick={this.onRegisterClick}>Register</button> &nbsp;
+            <button class="btn btn-outline-secondary my-2 my-sm-0" type="submit" onClick={this.onCreatePageClick}>Create</button>
           </form>
         </nav>
       </div>
@@ -26,6 +27,9 @@ class Header extends Component {
   }
   onLoginClick() {
     window.open("/login");
+  }
+  onCreatePageClick() {
+    window.open("/create-page");
   }
 }
 

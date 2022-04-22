@@ -42,30 +42,32 @@ class App extends Component {
             }],
             filteredListData: []
         }
-        
+
     }
-    componentDidMount(){
+    componentDidMount() {
         this.setState({ filteredListData: this.state.listData });
     }
     render() {
         return (
             <div>
                 <Header />
-                <h1>React Search</h1>
-                <div className="search">
-                    <form>
-                        <label>
-                            Search:
-                            <input type="text" name="name" onChange={this.handleChange} />
-                        </label>
-                        <input type="submit" value="Submit" />
-                    </form>
+                <div className='container'>
+                    <h1>Pages Search</h1>
+                    <div className="search">
+                        <form>
+                            <label>
+                                Search:
+                                <input type="text" name="name" onChange={this.handleChange} />
+                            </label>
+                            <input type="submit" value="Submit" />
+                        </form>
+                    </div>
+                    <ul>
+                        {this.state.filteredListData.map((item) => (
+                            <li key={item.id}>{item.text}</li>
+                        ))}
+                    </ul>
                 </div>
-                <ul>
-                    {this.state.filteredListData.map((item) => (
-                        <li key={item.id}>{item.text}</li>
-                    ))}
-                </ul>
             </div>
         );
     }
