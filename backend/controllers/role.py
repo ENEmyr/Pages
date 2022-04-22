@@ -14,6 +14,9 @@ def get_role_by_name(db:Session, role_name:str):
 
 def create_role(db:Session, role:schema.RoleCreate):
     new_role = model.Role(**role.dict())
+    exist = db.query(model.Role).filter(model.Role.name == new_role.name).first()
+    if exist:
+        return exist
     db.add(new_role)
     db.commit() # commit change to database
     db.refresh(new_role) # query an updated version of obj from database

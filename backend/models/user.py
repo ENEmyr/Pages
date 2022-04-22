@@ -24,6 +24,8 @@ class User(Base):
 
     # Relation to other models
     role = relationship("Role", back_populates="user")
+    # page = relationship("Page", back_populates="user")
+    # userfavorite = relationship("UserFaveorite", back_populates="user")
 
     def __repr__(self) -> str:
         return "<{}{}>".format(self.__class__.__name__, 
